@@ -1,0 +1,28 @@
+apiVersion: "extensions/v1beta1"
+kind: Deployment
+metadata:
+  name: test
+  labels:
+    k8s-app: test
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        k8s-app: test
+    spec:
+      containers:
+      - name: test
+        image: alpine
+        command:
+        args:
+        - /bin/sh
+        - -c
+        - touch /tmp/healthy; sleep 5; rm -rf /tmp/healthy; sleep 5
+        livenessProbe:
+          exec:
+            command:
+            - cat
+            - /tmp/healthy
+          initialDelaySeconds: 5
+          periodSeconds: 5

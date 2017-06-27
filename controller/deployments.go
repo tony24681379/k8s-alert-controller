@@ -1,48 +1,67 @@
 package controller
 
 import (
+	"sync"
 	"time"
 
 	"github.com/golang/glog"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
-	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
+type DeploymentGetter interface {
+	Deployment() DeploymentController
+}
+
 type DeploymentController struct {
+	sync.Mutex
 	Deployment types.DeploymentInterface
 }
 
 // RestartOnePod scale up the deployment and scale down the deployment
-func (d *DeploymentController) RestartOnePod(deploymentName string) {
-	deployment, err := d.Deployment.Get(deploymentName, metav1.GetOptions{})
+func (d *DeploymentController) RestartOnePod(resourceName string) error {
+	if err := d.updateReplicas(resourceName, 1); err != nil {
+		glog.Error(err)
+		return err
+	}
+
+	if err := d.updateReplicas(resourceName, -1); err != nil {
+		glog.Error(err)
+		return err
+	}
+	return nil
+}
+
+func (d *DeploymentController) updateReplicas(resourceName string, scaleReplicas int) error {
+	d.Lock()
+	deployment, err := d.Deployment.Get(resourceName, metav1.GetOptions{})
 	if err != nil {
-		glog.Error(err.Error())
+		glog.Error(err)
+		return err
 	}
 	availableReplicas := deployment.Status.AvailableReplicas
-	d.updateReplicas(deployment, deploymentName, 1)
-	deployment = d.watch(deployment, deploymentName, availableReplicas)
-	d.updateReplicas(deployment, deploymentName, -1)
-}
-
-func (d *DeploymentController) updateReplicas(deployment *v1beta1.Deployment, deploymentName string, Replicas int) {
-	*deployment.Spec.Replicas = int32(*deployment.Spec.Replicas) + int32(Replicas)
-	_, err := d.Deployment.Update(deployment)
-	if err != nil {
-		glog.Error(err.Error())
-	}
-}
-
-func (d *DeploymentController) watch(deployment *v1beta1.Deployment, deploymentName string, availableReplicas int32) *v1beta1.Deployment {
 	glog.V(2).Info(availableReplicas)
-	for {
-		deployment, err := d.Deployment.Get(deploymentName, metav1.GetOptions{})
-		if err != nil {
-			glog.Error(err.Error())
-		}
-		time.Sleep(1 * time.Second)
-		if deployment.Status.AvailableReplicas > availableReplicas {
-			return deployment
+	*deployment.Spec.Replicas = int32(*deployment.Spec.Replicas) + int32(scaleReplicas)
+	if _, err = d.Deployment.Update(deployment); err != nil {
+		glog.Error(err)
+		return err
+	}
+
+	if scaleReplicas > 0 {
+		for {
+			deployment, err := d.Deployment.Get(resourceName, metav1.GetOptions{})
+			if err != nil {
+				glog.Error(err)
+				d.Unlock()
+				return err
+			}
+			time.Sleep(1 * time.Second)
+			if deployment.Status.AvailableReplicas > availableReplicas {
+				d.Unlock()
+				return nil
+			}
 		}
 	}
+	d.Unlock()
+	return nil
 }

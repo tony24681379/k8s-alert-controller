@@ -19,7 +19,7 @@ type DeploymentController struct {
 }
 
 // RestartOnePod scale up the deployment and scale down the deployment
-func (d *DeploymentController) RestartOnePod(resourceName string) error {
+func (d *DeploymentController) RestartOnePod(resourceName, podName string) error {
 	if err := d.updateReplicas(resourceName, 1); err != nil {
 		glog.Error(err)
 		return err
@@ -34,6 +34,7 @@ func (d *DeploymentController) RestartOnePod(resourceName string) error {
 
 func (d *DeploymentController) updateReplicas(resourceName string, scaleReplicas int) error {
 	d.Lock()
+	defer d.Unlock()
 	deployment, err := d.Deployment.Get(resourceName, metav1.GetOptions{})
 	if err != nil {
 		glog.Error(err)
@@ -52,16 +53,13 @@ func (d *DeploymentController) updateReplicas(resourceName string, scaleReplicas
 			deployment, err := d.Deployment.Get(resourceName, metav1.GetOptions{})
 			if err != nil {
 				glog.Error(err)
-				d.Unlock()
 				return err
 			}
 			time.Sleep(1 * time.Second)
 			if deployment.Status.AvailableReplicas > availableReplicas {
-				d.Unlock()
 				return nil
 			}
 		}
 	}
-	d.Unlock()
 	return nil
 }

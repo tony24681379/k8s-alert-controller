@@ -1,0 +1,26 @@
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: daemon
+  labels:
+    app: daemon
+spec:
+  template:
+    metadata:
+      labels:
+        app: daemon
+    spec:
+      containers:
+      - image: alpine
+        name: daemon
+        args:
+        - /bin/sh
+        - -c
+        - touch /tmp/healthy; sleep 5; rm -rf /tmp/healthy; sleep 5
+        livenessProbe:
+          exec:
+            command:
+            - cat
+            - /tmp/healthy
+          initialDelaySeconds: 5
+          periodSeconds: 5

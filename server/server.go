@@ -32,7 +32,7 @@ func Server(kubeconfig, port string) error {
 	if err != nil {
 		return err
 	}
-	//monitoring.PodRestart(clientset, "default", "test-3826539896-0dv7j")
+
 	r := mux.NewRouter()
 	r.HandleFunc("/healthz", healthz)
 	r.HandleFunc("/pod/restart", monitoring.PodRestart(clientset))

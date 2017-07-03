@@ -15,12 +15,13 @@ import (
 // PodRestart will scale the pod
 func PodRestart(clientset *kubernetes.Clientset) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		r.ParseForm()
 		glog.V(2).Info("PodRestart")
+
+		r.ParseForm()
 		podName := r.Form.Get("pod")
-		glog.V(2).Info(podName)
 		namespace := r.Form.Get("namespace")
-		glog.V(2).Info(namespace)
+		glog.V(2).Info(podName, namespace)
+
 		po, err := clientset.CoreV1().Pods(namespace).Get(podName, metav1.GetOptions{})
 		if err != nil {
 			glog.Error(err)

@@ -4,7 +4,7 @@ import (
 	"os"
 
 	"github.com/golang/glog"
-	"github.com/tony24681379/k8s-tools/cmd"
+	"github.com/tony24681379/k8s-alert-controller/cmd"
 )
 
 func main() {

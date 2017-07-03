@@ -9,7 +9,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	"github.com/tony24681379/k8s-tools/monitoring"
+	"github.com/tony24681379/k8s-alert-controller/monitoring"
 )
 
 // Server serve the request

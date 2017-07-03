@@ -1,13 +1,14 @@
 package monitoring
 
 import (
+	"io/ioutil"
 	"net/http"
 	"sync"
 
 	"fmt"
 
 	"github.com/golang/glog"
-	"github.com/tony24681379/k8s-tools/controller"
+	"github.com/tony24681379/k8s-alert-controller/controller"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -17,10 +18,16 @@ func PodRestart(clientset *kubernetes.Clientset) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		glog.V(2).Info("PodRestart")
 
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			panic(err)
+		}
+		glog.Info(string(body))
+
 		r.ParseForm()
 		podName := r.Form.Get("pod")
 		namespace := r.Form.Get("namespace")
-		glog.V(2).Info(podName, namespace)
+		glog.V(2).Info(namespace, podName)
 
 		po, err := clientset.CoreV1().Pods(namespace).Get(podName, metav1.GetOptions{})
 		if err != nil {

@@ -19,7 +19,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/spf13/cobra"
-	"github.com/tony24681379/k8s-tools/server"
+	"github.com/tony24681379/k8s-alert-controller/server"
 )
 
 type options struct {

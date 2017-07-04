@@ -34,7 +34,7 @@ func Server(kubeconfig, port string) error {
 	}
 
 	r := mux.NewRouter()
-	r.HandleFunc("/healthz", healthz)
+	r.HandleFunc("/", healthz)
 	r.HandleFunc("/pod/restart", monitoring.PodRestart(clientset))
 	glog.Info("serve on port:", port)
 	glog.Fatal(http.ListenAndServe(":"+port, r))

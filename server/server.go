@@ -35,7 +35,7 @@ func Server(kubeconfig, port string) error {
 
 	r := mux.NewRouter()
 	r.HandleFunc("/", healthz)
-	r.HandleFunc("/pod/restart", monitoring.PodRestart(clientset))
+	r.HandleFunc("/webhook", monitoring.Webhook(clientset))
 	glog.Info("serve on port:", port)
 	glog.Fatal(http.ListenAndServe(":"+port, r))
 	return nil
@@ -43,5 +43,5 @@ func Server(kubeconfig, port string) error {
 
 func healthz(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("OK"))
-	glog.Info("healthz")
+	glog.V(2).Info("healthz")
 }

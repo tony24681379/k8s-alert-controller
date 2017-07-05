@@ -1,8 +1,6 @@
 package monitoring
 
 import (
-	"io/ioutil"
-	"net/http"
 	"sync"
 
 	"fmt"
@@ -13,55 +11,36 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-// PodRestart will scale the pod
-func PodRestart(clientset *kubernetes.Clientset) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		glog.V(2).Info("PodRestart")
+// PodRestart will restart the pod and return success string or error
+func PodRestart(clientset *kubernetes.Clientset, podName, namespace string) (string, error) {
+	glog.V(2).Info("PodRestart")
+	glog.V(2).Info(namespace, podName)
 
-		body, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			panic(err)
-		}
-		glog.Info(string(body))
-
-		r.ParseForm()
-		podName := r.Form.Get("pod")
-		namespace := r.Form.Get("namespace")
-		glog.V(2).Info(namespace, podName)
-
-		po, err := clientset.CoreV1().Pods(namespace).Get(podName, metav1.GetOptions{})
-		if err != nil {
-			glog.Error(err)
-			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte(podName + " not found"))
-			return
-		}
-		podLabel := po.GetLabels()
-		glog.V(2).Info(podLabel)
-
-		resourceType, resourceName, err := CheckResource(clientset, namespace, podLabel)
-		if err != nil {
-			glog.Error(err)
-			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte(podName + " " + err.Error()))
-			return
-		}
-
-		controller, err := controller.ControllerFor(clientset, resourceType, namespace)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(resourceType + " " + resourceName + " " + err.Error()))
-			return
-		}
-
-		err = controller.RestartOnePod(resourceName, podName)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(resourceType + " " + resourceName + " " + err.Error()))
-		} else {
-			w.Write([]byte(resourceType + ": " + resourceName + " namespace:" + namespace))
-		}
+	po, err := clientset.CoreV1().Pods(namespace).Get(podName, metav1.GetOptions{})
+	if err != nil {
+		glog.Error(err)
+		return "", err
 	}
+	podLabel := po.GetLabels()
+	glog.V(2).Info(podLabel)
+
+	resourceType, resourceName, err := CheckResource(clientset, namespace, podLabel)
+	if err != nil {
+		glog.Error(err)
+		return "", err
+	}
+
+	controller, err := controller.ControllerFor(clientset, resourceType, namespace)
+	if err != nil {
+		glog.Error(err)
+		return "", err
+	}
+
+	if err := controller.RestartOnePod(resourceName, podName); err != nil {
+		glog.Error(err)
+		return "", err
+	}
+	return resourceType + ": " + resourceName + " namespace:" + namespace, nil
 }
 
 // CheckResource return resourceType and resourceName

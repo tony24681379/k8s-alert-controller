@@ -57,6 +57,7 @@ func (d *DeploymentController) updateReplicas(resourceName string, scaleReplicas
 			}
 			time.Sleep(1 * time.Second)
 			if deployment.Status.AvailableReplicas > availableReplicas {
+				time.Sleep(3 * time.Second)
 				return nil
 			}
 		}

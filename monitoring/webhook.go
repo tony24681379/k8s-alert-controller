@@ -21,18 +21,24 @@ type Alert struct {
 		Kubernetes          string `json:"kubernetes"`
 		KubernetesName      string `json:"kubernetes_name"`
 		KubernetesNamespace string `json:"kubernetes_namespace"`
+		Namespace           string `json:"namespace"`
+		Pod                 string `json:"pod"`
+		Service             string `json:"service"`
+		Severity            string `json:"severity"`
 	} `json:"labels"`
 	Annotations struct {
-		Description struct {
-			Service   string `json:"service"`
-			Pod       string `json:"pod"`
-			Namespace string `json:"namespace"`
-		} `json:"description"`
-		Summary string `json:"summary"`
+		Description string `json:"description"`
+		Summary     string `json:"summary"`
 	} `json:"annotations"`
 	StartsAt     time.Time `json:"startsAt"`
 	EndsAt       time.Time `json:"endsAt"`
 	GeneratorURL string    `json:"generatorURL"`
+}
+
+type Description struct {
+	Service   string `json:"service"`
+	Pod       string `json:"pod"`
+	Namespace string `json:"namespace"`
 }
 
 type Alerts struct {
@@ -54,6 +60,7 @@ type Alerts struct {
 	GroupKey    string `json:"groupKey"`
 }
 
+// Webhook recive prometheus alert and handle the requests
 func Webhook(clientset *kubernetes.Clientset) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := ioutil.ReadAll(r.Body)
@@ -63,7 +70,7 @@ func Webhook(clientset *kubernetes.Clientset) http.HandlerFunc {
 			w.Write([]byte(err.Error()))
 			return
 		}
-		glog.V(2).Info(string(body))
+		glog.Info(string(body))
 
 		var alerts Alerts
 		if err = json.Unmarshal(body, &alerts); err != nil {
@@ -72,20 +79,21 @@ func Webhook(clientset *kubernetes.Clientset) http.HandlerFunc {
 			w.Write([]byte(err.Error()))
 			return
 		}
-		glog.V(2).Infof("+%v", alerts)
+		glog.Infof("+%v", alerts)
 
 		var res, resErr string
 
 		for _, alert := range alerts.Alerts {
 			if alert.Status == "firing" {
-				go func() {
+				glog.Info(alert.Status)
+				go func(alert Alert) {
 					r, err := handleAlert(clientset, alert)
 
 					res = res + r
 					if err != nil {
 						resErr = resErr + err.Error()
 					}
-				}()
+				}(alert)
 			} else if alert.Status == "resolved" {
 				continue
 			}
@@ -100,10 +108,15 @@ func Webhook(clientset *kubernetes.Clientset) http.HandlerFunc {
 }
 
 func handleAlert(clientset *kubernetes.Clientset, alert Alert) (result string, err error) {
+	var description Description
+	if err = json.Unmarshal([]byte(alert.Annotations.Description), &description); err != nil {
+		glog.Error("json Unmarshal fail:", err)
+		return "", err
+	}
 	switch alert.Labels.Alertname {
 	// case "PROBE_FAILED":
 	case "POD_RESTART":
-		result, err = PodRestart(clientset, alert.Annotations.Description.Pod, alert.Annotations.Description.Namespace)
+		result, err = PodRestart(clientset, description.Pod, description.Namespace)
 	}
 	return result, err
 }

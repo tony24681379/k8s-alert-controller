@@ -1,6 +1,7 @@
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
+  namespace: {{ .Values.namespace }}
   name: {{ printf "%s-%s" .Values.service.name .Release.Name |trunc 63 }}
   labels:
 {{ include "labels" . | indent 4 }}

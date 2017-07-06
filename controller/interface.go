@@ -19,8 +19,8 @@ type controllerInterface interface {
 func ControllerFor(clientset *kubernetes.Clientset, resourceType string, namespace string) (controllerInterface, error) {
 	switch resourceType {
 	case DeploymentType:
-
 		return &DeploymentController{
+			Pod:        clientset.CoreV1().Pods(namespace),
 			Deployment: clientset.Extensions().Deployments(namespace),
 		}, nil
 	case StatefulSetType:

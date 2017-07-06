@@ -43,5 +43,5 @@ func Server(kubeconfig, port string) error {
 
 func healthz(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("OK"))
-	glog.V(2).Info("healthz")
+	glog.V(4).Info("healthz")
 }

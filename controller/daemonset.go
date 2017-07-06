@@ -17,6 +17,14 @@ type DaemonSetController struct {
 
 // RestartOnePod scale up the deployment and scale down the deployment
 func (d *DaemonSetController) RestartOnePod(resourceName, podName string) error {
+	if err := d.deletePod(podName); err != nil {
+		glog.Error(err)
+		return err
+	}
+	return nil
+}
+
+func (d *DaemonSetController) deletePod(podName string) error {
 	if err := d.Pod.Delete(podName, &metav1.DeleteOptions{}); err != nil {
 		glog.Error(err)
 		return err

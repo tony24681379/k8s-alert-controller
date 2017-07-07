@@ -31,5 +31,5 @@ func ControllerFor(clientset *kubernetes.Clientset, resourceType string, namespa
 			DaemonSet: clientset.Extensions().DaemonSets(namespace),
 		}, nil
 	}
-	return nil, fmt.Errorf("no controller has been implemented for %q", resourceType)
+	return nil, fmt.Errorf("no controller has been implemented for %s", resourceType)
 }

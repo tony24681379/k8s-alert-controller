@@ -85,7 +85,6 @@ func Webhook(clientset *kubernetes.Clientset) http.HandlerFunc {
 
 		for _, alert := range alerts.Alerts {
 			if alert.Status == "firing" {
-				glog.Info(alert.Status)
 				go func(alert Alert) {
 					r, err := handleAlert(clientset, alert)
 

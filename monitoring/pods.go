@@ -24,7 +24,7 @@ func PodRestart(clientset *kubernetes.Clientset, podName, namespace string) (str
 	podLabel := po.GetLabels()
 	glog.V(2).Info(podLabel)
 
-	resourceType, resourceName, err := CheckResource(clientset, namespace, podLabel)
+	resourceType, resourceName, err := CheckResource(clientset, podName, namespace, podLabel)
 	if err != nil {
 		glog.Error(err)
 		return "", err
@@ -44,7 +44,7 @@ func PodRestart(clientset *kubernetes.Clientset, podName, namespace string) (str
 }
 
 // CheckResource return resourceType and resourceName
-func CheckResource(clientset *kubernetes.Clientset, namespace string, podLabel map[string]string) (resourceType string, resourceName string, err error) {
+func CheckResource(clientset *kubernetes.Clientset, podName, namespace string, podLabel map[string]string) (resourceType string, resourceName string, err error) {
 	var (
 		isDelpoyment, isDaemonSet     bool
 		deploymentName, daemonSetName string
@@ -74,7 +74,7 @@ func CheckResource(clientset *kubernetes.Clientset, namespace string, podLabel m
 	} else if isDaemonSet {
 		return controller.DaemonSetType, daemonSetName, nil
 	}
-	return "", "", nil
+	return "", "", fmt.Errorf("%s resource type not found", podName)
 }
 
 func checkResourceDeployment(clientset *kubernetes.Clientset, namespace string, podLabel map[string]string) (bool, string, error) {
@@ -85,15 +85,15 @@ func checkResourceDeployment(clientset *kubernetes.Clientset, namespace string, 
 	}
 
 	for _, d := range deploymentList.Items {
-		deploymentLabel := d.GetLabels()
+		selectorLabel := d.Spec.Selector.MatchLabels
+		glog.V(2).Info(selectorLabel)
 		equal := true
-		for k, v := range deploymentLabel {
+		for k, v := range selectorLabel {
 			if podLabel[k] != v {
 				equal = false
 				break
 			}
 		}
-		glog.V(2).Info(d.GetLabels())
 		if equal {
 			glog.Infof("resource %v %v is %v", d.GetNamespace(), d.GetName(), "deployment")
 			return true, d.GetName(), nil
@@ -110,15 +110,15 @@ func checkResourceDaemonSet(clientset *kubernetes.Clientset, namespace string, p
 	}
 
 	for _, d := range daemonSetList.Items {
-		daemonSetLabel := d.GetLabels()
+		selectorLabel := d.Spec.Selector.MatchLabels
+		glog.V(2).Info(selectorLabel)
 		equal := true
-		for k, v := range daemonSetLabel {
+		for k, v := range selectorLabel {
 			if podLabel[k] != v {
 				equal = false
 				break
 			}
 		}
-		glog.V(2).Info(d.GetLabels())
 		if equal {
 			glog.Infof("resource %v %v is %v", d.GetNamespace(), d.GetName(), "daemonset")
 			return true, d.GetName(), nil

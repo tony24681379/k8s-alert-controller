@@ -33,7 +33,7 @@ func TestDeploymentUpdateReplicas(t *testing.T) {
 	}
 
 	deployment := DeploymentController{Deployment: clientSet.Extensions().Deployments(v1.NamespaceDefault)}
-	err = deployment.updateReplicas("foo", -1)
+	_, err = deployment.updateReplicas("foo", -1)
 
 	if err != nil {
 		t.Errorf("unexpected actions: %v", err)

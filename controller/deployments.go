@@ -11,22 +11,37 @@ import (
 )
 
 type DeploymentController struct {
-	sync.Mutex
 	Pod        corev1types.PodInterface
 	Deployment types.DeploymentInterface
 }
 
+var deploymentMutex sync.Mutex
+
 // RestartOnePod scale up the deployment and scale down the deployment
 func (d *DeploymentController) RestartOnePod(resourceName, podName string) error {
-	d.Lock()
-	defer d.Unlock()
-	availableReplicas, err := d.updateReplicas(resourceName, 1)
-	if err != nil {
-		glog.Error(err)
-		return err
+	deploymentMutex.Lock()
+	glog.V(2).Info("lock")
+	defer func() {
+		glog.V(2).Info("unlock")
+		deploymentMutex.Unlock()
+	}()
+
+	retryTimes := 3
+	for i := 0; i < retryTimes; i++ {
+		err := d.updateReplicas(resourceName, 1)
+		if i < retryTimes {
+			if err != nil {
+				glog.Error(err)
+				continue
+			} else {
+				break
+			}
+		} else {
+			return err
+		}
 	}
 
-	if err := d.waitForAvailable(resourceName, availableReplicas); err != nil {
+	if err := d.waitForAvailable(resourceName); err != nil {
 		glog.Error(err)
 		return err
 	}
@@ -35,15 +50,23 @@ func (d *DeploymentController) RestartOnePod(resourceName, podName string) error
 		glog.Error(err)
 	}
 
-	if _, err := d.updateReplicas(resourceName, -1); err != nil {
-		glog.Error(err)
-		return err
+	for i := 0; i < retryTimes; i++ {
+		err := d.updateReplicas(resourceName, -1)
+		if i < retryTimes {
+			if err != nil {
+				glog.Error(err)
+				continue
+			} else {
+				break
+			}
+		} else {
+			return err
+		}
 	}
 	return nil
 }
 
-func (d *DeploymentController) waitForAvailable(resourceName string, availableReplicas int32) error {
-	glog.V(2).Info(resourceName, " ", availableReplicas)
+func (d *DeploymentController) waitForAvailable(resourceName string) error {
 	for {
 		deployment, err := d.Deployment.Get(resourceName, metav1.GetOptions{})
 		if err != nil {
@@ -51,8 +74,7 @@ func (d *DeploymentController) waitForAvailable(resourceName string, availableRe
 			return err
 		}
 		time.Sleep(1 * time.Second)
-		if deployment.Status.AvailableReplicas > availableReplicas {
-			glog.V(2).Info(resourceName, " ", deployment.Status.AvailableReplicas)
+		if deployment.Status.AvailableReplicas > 1 {
 			break
 		}
 	}
@@ -60,19 +82,20 @@ func (d *DeploymentController) waitForAvailable(resourceName string, availableRe
 	return nil
 }
 
-func (d *DeploymentController) updateReplicas(resourceName string, scaleReplicas int) (int32, error) {
+func (d *DeploymentController) updateReplicas(resourceName string, scaleReplicas int) error {
 	deployment, err := d.Deployment.Get(resourceName, metav1.GetOptions{})
 	if err != nil {
 		glog.Error(err)
-		return 0, err
+		return err
 	}
 
 	*deployment.Spec.Replicas = int32(*deployment.Spec.Replicas) + int32(scaleReplicas)
-	if _, err = d.Deployment.Update(deployment); err != nil {
+	deployment, err = d.Deployment.Update(deployment)
+	if err != nil {
 		glog.Error(err)
-		return 0, err
+		return err
 	}
-	return deployment.Status.AvailableReplicas, nil
+	return nil
 }
 
 func (d *DeploymentController) deletePod(podName string) error {

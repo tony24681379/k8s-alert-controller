@@ -20,6 +20,9 @@ func deployment() *v1beta1.Deployment {
 		Spec: v1beta1.DeploymentSpec{
 			Replicas: &replicas,
 		},
+		Status: v1beta1.DeploymentStatus{
+			AvailableReplicas: int32(1),
+		},
 	}
 	return dep
 }
@@ -33,7 +36,7 @@ func TestDeploymentUpdateReplicas(t *testing.T) {
 	}
 
 	deployment := DeploymentController{Deployment: clientSet.Extensions().Deployments(v1.NamespaceDefault)}
-	_, err = deployment.updateReplicas("foo", -1)
+	err = deployment.updateReplicas("foo", -1)
 
 	if err != nil {
 		t.Errorf("unexpected actions: %v", err)

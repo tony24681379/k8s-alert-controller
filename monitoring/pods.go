@@ -12,7 +12,7 @@ import (
 )
 
 // PodRestart will restart the pod and return success string or error
-func PodRestart(clientset *kubernetes.Clientset, podName, namespace string) (string, error) {
+func PodRestart(clientset kubernetes.Interface, podName, namespace string) (string, error) {
 	glog.V(2).Info("PodRestart")
 	glog.V(2).Info(namespace, podName)
 
@@ -44,7 +44,7 @@ func PodRestart(clientset *kubernetes.Clientset, podName, namespace string) (str
 }
 
 // CheckResource return resourceType and resourceName
-func CheckResource(clientset *kubernetes.Clientset, podName, namespace string, podLabel map[string]string) (resourceType string, resourceName string, err error) {
+func CheckResource(clientset kubernetes.Interface, podName, namespace string, podLabel map[string]string) (resourceType string, resourceName string, err error) {
 	var (
 		isDelpoyment, isDaemonSet     bool
 		deploymentName, daemonSetName string
@@ -77,7 +77,7 @@ func CheckResource(clientset *kubernetes.Clientset, podName, namespace string, p
 	return "", "", fmt.Errorf("%s resource type not found", podName)
 }
 
-func checkResourceDeployment(clientset *kubernetes.Clientset, namespace string, podLabel map[string]string) (bool, string, error) {
+func checkResourceDeployment(clientset kubernetes.Interface, namespace string, podLabel map[string]string) (bool, string, error) {
 	deploymentList, err := clientset.Extensions().Deployments(namespace).List(metav1.ListOptions{})
 	if err != nil {
 		glog.Error(err)
@@ -102,7 +102,7 @@ func checkResourceDeployment(clientset *kubernetes.Clientset, namespace string, 
 	return false, "", nil
 }
 
-func checkResourceDaemonSet(clientset *kubernetes.Clientset, namespace string, podLabel map[string]string) (bool, string, error) {
+func checkResourceDaemonSet(clientset kubernetes.Interface, namespace string, podLabel map[string]string) (bool, string, error) {
 	daemonSetList, err := clientset.Extensions().DaemonSets(namespace).List(metav1.ListOptions{})
 	if err != nil {
 		glog.Error(err)

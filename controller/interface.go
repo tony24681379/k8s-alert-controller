@@ -16,7 +16,8 @@ type controllerInterface interface {
 	RestartOnePod(resourceName, podName string) error
 }
 
-func ControllerFor(clientset *kubernetes.Clientset, resourceType string, namespace string) (controllerInterface, error) {
+// ControllerFor return controller type if exist
+func ControllerFor(clientset kubernetes.Interface, resourceType string, namespace string) (controllerInterface, error) {
 	switch resourceType {
 	case DeploymentType:
 		return &DeploymentController{

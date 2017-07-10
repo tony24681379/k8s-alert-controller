@@ -61,7 +61,7 @@ type Alerts struct {
 }
 
 // Webhook recive prometheus alert and handle the requests
-func Webhook(clientset *kubernetes.Clientset) http.HandlerFunc {
+func Webhook(clientset kubernetes.Interface) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
@@ -79,7 +79,7 @@ func Webhook(clientset *kubernetes.Clientset) http.HandlerFunc {
 			w.Write([]byte(err.Error()))
 			return
 		}
-		glog.Infof("+%v", alerts)
+		glog.V(1).Infof("+%v", alerts)
 
 		var res, resErr string
 
@@ -106,12 +106,13 @@ func Webhook(clientset *kubernetes.Clientset) http.HandlerFunc {
 	}
 }
 
-func handleAlert(clientset *kubernetes.Clientset, alert Alert) (result string, err error) {
+func handleAlert(clientset kubernetes.Interface, alert Alert) (result string, err error) {
 	var description Description
 	if err = json.Unmarshal([]byte(alert.Annotations.Description), &description); err != nil {
 		glog.Error("json Unmarshal fail:", err)
 		return "", err
 	}
+	glog.Info(alert)
 	switch alert.Labels.Alertname {
 	// case "PROBE_FAILED":
 	case "POD_RESTART":

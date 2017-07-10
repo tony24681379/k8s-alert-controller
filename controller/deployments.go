@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -43,7 +44,6 @@ func (d *DeploymentController) RestartOnePod(resourceName, podName string) error
 
 	if err := d.waitForAvailable(resourceName); err != nil {
 		glog.Error(err)
-		return err
 	}
 
 	if err := d.deletePod(podName); err != nil {
@@ -67,19 +67,28 @@ func (d *DeploymentController) RestartOnePod(resourceName, podName string) error
 }
 
 func (d *DeploymentController) waitForAvailable(resourceName string) error {
-	for {
-		deployment, err := d.Deployment.Get(resourceName, metav1.GetOptions{})
-		if err != nil {
-			glog.Error(err)
-			return err
+	timeOut := time.After(120 * time.Second)
+	complete := make(chan bool)
+	go func() {
+		for {
+			deployment, err := d.Deployment.Get(resourceName, metav1.GetOptions{})
+			if err != nil {
+				glog.Error(err)
+				continue
+			}
+			time.Sleep(1 * time.Second)
+			if deployment.Status.AvailableReplicas >= 1 {
+				complete <- true
+				break
+			}
 		}
-		time.Sleep(1 * time.Second)
-		if deployment.Status.AvailableReplicas > 1 {
-			break
-		}
+	}()
+	select {
+	case <-timeOut:
+		return fmt.Errorf("waitForAvailable time out")
+	case <-complete:
+		return nil
 	}
-
-	return nil
 }
 
 func (d *DeploymentController) updateReplicas(resourceName string, scaleReplicas int) error {

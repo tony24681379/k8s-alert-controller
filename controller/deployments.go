@@ -27,19 +27,15 @@ func (d *DeploymentController) RestartOnePod(resourceName, podName string) error
 		deploymentMutex.Unlock()
 	}()
 
-	retryTimes := 3
-	for i := 0; i < retryTimes; i++ {
-		err := d.updateReplicas(resourceName, 1)
-		if i < retryTimes {
-			if err != nil {
-				glog.Error(err)
-				continue
-			} else {
-				break
-			}
-		} else {
-			return err
-		}
+	deployment, err := d.Deployment.Get(resourceName, metav1.GetOptions{})
+	if err != nil {
+		glog.Error(err)
+	}
+	replicas := *deployment.Spec.Replicas
+
+	if err := d.updateReplicas(resourceName, replicas+int32(1)); err != nil {
+		glog.Error(err)
+		return err
 	}
 
 	if err := d.waitForAvailable(resourceName); err != nil {
@@ -50,18 +46,10 @@ func (d *DeploymentController) RestartOnePod(resourceName, podName string) error
 		glog.Error(err)
 	}
 
-	for i := 0; i < retryTimes; i++ {
-		err := d.updateReplicas(resourceName, -1)
-		if i < retryTimes {
-			if err != nil {
-				glog.Error(err)
-				continue
-			} else {
-				break
-			}
-		} else {
-			return err
-		}
+	err = d.updateReplicas(resourceName, replicas)
+	if err != nil {
+		glog.Error(err)
+		return err
 	}
 	return nil
 }
@@ -91,17 +79,27 @@ func (d *DeploymentController) waitForAvailable(resourceName string) error {
 	}
 }
 
-func (d *DeploymentController) updateReplicas(resourceName string, scaleReplicas int) error {
-	deployment, err := d.Deployment.Get(resourceName, metav1.GetOptions{})
-	if err != nil {
-		glog.Error(err)
-		return err
-	}
+func (d *DeploymentController) updateReplicas(resourceName string, scaleReplicas int32) error {
+	retryTimes := 3
+	var err error
+	for i := 0; i < retryTimes; i++ {
+		deployment, err := d.Deployment.Get(resourceName, metav1.GetOptions{})
+		if err != nil {
+			glog.Error(err)
+			time.Sleep(1 * time.Second)
+			continue
+		}
 
-	*deployment.Spec.Replicas = int32(*deployment.Spec.Replicas) + int32(scaleReplicas)
-	deployment, err = d.Deployment.Update(deployment)
+		*deployment.Spec.Replicas = scaleReplicas
+		_, err = d.Deployment.Update(deployment)
+		if err != nil {
+			glog.Error(err)
+			time.Sleep(1 * time.Second)
+			continue
+		}
+		break
+	}
 	if err != nil {
-		glog.Error(err)
 		return err
 	}
 	return nil

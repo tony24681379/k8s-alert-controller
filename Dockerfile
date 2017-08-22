@@ -1,4 +1,4 @@
-ARG GO_VERSION=1.8.1
+ARG GO_VERSION=1.8.3
 FROM golang:${GO_VERSION}-alpine AS build-stage
 WORKDIR /go/src/github.com/tony24681379/k8s-alert-controller
 COPY ./ /go/src/github.com/tony24681379/k8s-alert-controller

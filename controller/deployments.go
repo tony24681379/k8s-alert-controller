@@ -7,13 +7,13 @@ import (
 
 	"github.com/golang/glog"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	corev1types "k8s.io/client-go/kubernetes/typed/core/v1"
-	types "k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
+	"k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
 )
 
 type DeploymentController struct {
-	Pod        corev1types.PodInterface
-	Deployment types.DeploymentInterface
+	Pod        v1.PodInterface
+	Deployment v1beta1.DeploymentInterface
 }
 
 var deploymentMutex sync.Mutex
